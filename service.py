@@ -81,6 +81,7 @@ def main_loop():
             add_to_final_queue.main()
             logging.info("Step 3 DONE.")
 
+            # Step 4 - Checking for incomplete incidents of faglig vurdering...
             logging.info("Step 4 - Checking for incomplete incidents of faglig vurdering...")
             reevaluate_faglig_vurdering.main()
             logging.info("Step 4 DONE.")
