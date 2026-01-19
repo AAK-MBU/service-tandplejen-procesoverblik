@@ -3,9 +3,9 @@ import signal
 import time
 import logging
 
-from helpers import helper_functions, faglig_vurdering_udfoert, get_forms, add_to_final_queue
-
 from config import PATH_TO_REQUESTS_CA_BUNDLE
+
+from helpers import helper_functions, faglig_vurdering_udfoert, get_forms, add_to_final_queue, reevaluate_faglig_vurdering
 
 os.environ["REQUESTS_CA_BUNDLE"] = PATH_TO_REQUESTS_CA_BUNDLE
 
@@ -44,7 +44,7 @@ def main_loop():
 
     while running:
         try:
-            # Step 1
+            # Step 1 - Checking 'faglig_vurdering_udfoert' workqueue...
             logging.info("Step 1 - Checking 'faglig_vurdering_udfoert' workqueue...")
             workqueue_name = "tan.udskrivning22.faglig_vurdering_udfoert"
 
@@ -55,7 +55,7 @@ def main_loop():
             faglig_vurdering_udfoert.main(workitems)
             logging.info("Step 1 DONE.")
 
-            # Step 2
+            # Step 2 - Checking formular submissions...
             logging.info("Step 2 - Checking formular submissions...")
             form_results = get_forms.get_forms()
             logging.info(f"Found {len(form_results)} forms.")
@@ -76,10 +76,14 @@ def main_loop():
 
             logging.info("Step 2 DONE.")
 
-            # Step 3
+            # Step 3 - Processing final queue...
             logging.info("Step 3 - Processing final queue...")
             add_to_final_queue.main()
             logging.info("Step 3 DONE.")
+
+            logging.info("Step 4 - Checking for incomplete incidents of faglig vurdering...")
+            reevaluate_faglig_vurdering.main()
+            logging.info("Step 4 DONE.")
 
             # Sleep 5 minutes
             logging.info("Sleeping for 5 minutes...")
