@@ -3,11 +3,11 @@
   <name>WorkqueueService - Python 3.13 Service</name>
   <description>WorkqueueService as a Windows Service using WinSW.</description>
 
-  <executable>C:\Python_repos\MBU_Udskrivning_22_aar_Service\.venv\Scripts\python.exe</executable>
-  <arguments>C:\Python_repos\MBU_Udskrivning_22_aar_Service\service.py</arguments>
-  <workingdirectory>C:\Python_repos\MBU_Udskrivning_22_aar_Service</workingdirectory>
+  <executable>C:\Python_repos\service-tandplejen-procesoverblik\.venv\Scripts\python.exe</executable>
+  <arguments>C:\Python_repos\service-tandplejen-procesoverblik\service.py</arguments>
+  <workingdirectory>C:\Python_repos\service-tandplejen-procesoverblik</workingdirectory>
 
-  <logpath>C:\Python_repos\MBU_Udskrivning_22_aar_Service\logs</logpath>
+  <logpath>C:\Python_repos\service-tandplejen-procesoverblik\logs</logpath>
   <log mode="roll-by-size">
     <sizeThreshold>1048576</sizeThreshold>
     <keepFiles>5</keepFiles>
