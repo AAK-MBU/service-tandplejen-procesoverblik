@@ -59,8 +59,9 @@ def main_loop():
             logging.info("Step 2 - Checking formular submissions...")
             form_results = get_forms.get_forms()
             logging.info(f"Found {len(form_results)} forms.")
+            print(f"Found {len(form_results)} forms.")
 
-            journalising_workqueue_name = "jou.solteqtand.main"
+            journalising_workqueue_name = "jou.solteqtand.udskrivning_22"
             journalising_workqueue = helper_functions.fetch_workqueue(journalising_workqueue_name)
             existing_refs = {str(r) for r in helper_functions.get_workqueue_item_references(journalising_workqueue)}
 
