@@ -138,6 +138,7 @@ def _find_ready_process_runs(
 
         data = response.json()
         results = data.get("items", [])
+        total_pages = data.get("pages", 1)
 
         for process_run in results:
             faglig_vurdering_step_status = None
@@ -162,8 +163,7 @@ def _find_ready_process_runs(
 
                     break
 
-        # stop if there’s no next page
-        if not data.get("next"):
+        if page >= total_pages:
             logging.info("Finished scanning all pages for process runs.")
 
             break
