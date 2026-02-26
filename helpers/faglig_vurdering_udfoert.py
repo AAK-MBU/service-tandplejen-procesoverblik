@@ -8,11 +8,18 @@ from automation_server_client._models import WorkItem
 
 from mbu_solteqtand_shared_components.database.db_handler import SolteqTandDatabase
 
+from helpers import helper_functions
+
 SOLTEQ_TAND_DB_CONN_STRING = os.getenv("DBCONNECTIONSTRINGSOLTEQTAND")
 
 
-def main(workitems):
+def main():
     """Main function to execute the script."""
+
+    workqueue_name = "tan.udskrivning22.faglig_vurdering_udfoert"
+
+    workqueue = helper_functions.fetch_workqueue(workqueue_name)
+    workitems = helper_functions.fetch_workqueue_workitems(workqueue)
 
     for item_dict in workitems:
         if item_dict.get("status") not in ("pending user action", "failed"):

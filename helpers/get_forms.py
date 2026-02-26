@@ -1,152 +1,179 @@
 """Module to get forms from the SQL database."""
 
 import os
-import urllib.parse
 
-from sqlalchemy import Column, MetaData, Table, create_engine, select, text
+import logging
+
+from mbu_process_dashboard_shared_components.process_dashboard_client import ProcessDashboardClient
+
+from mbu_process_dashboard_shared_components import process
+
+from helpers import helper_functions
 
 
-def get_forms():
+def main():
     """
-    Fetches the next available form from a specified table in the SQL database
-    using SQLAlchemy.
-
-    Returns:
-        list[dict]: List of dictionaries with form data.
-
-    Raises:
-        Exception: For any unexpected errors.
+    Fetch forms for 4 tandpleje formulars
     """
 
-    try:
-        connection_string = os.environ.get("DBCONNECTIONSTRINGPROD")
-        if not connection_string:
-            raise ValueError("DBCONNECTIONSTRINGPROD environment variable not set.")
+    connection_string = os.environ.get("DBCONNECTIONSTRINGPROD")
 
-        # If the connection string is a long ODBC string, use odbc_connect
-        if not connection_string.lower().startswith("mssql+pyodbc:///?odbc_connect="):
-            connection_string = (
-                "mssql+pyodbc:///?odbc_connect=" + urllib.parse.quote_plus(connection_string)
+    sql = """
+        SELECT
+            -- Fields for all formulars
+            form_id,
+            form_type,
+            form_data,
+            status,
+            COALESCE(JSON_VALUE([view_Journalizing].form_data, '$.data.cpr_nummer_borger'), JSON_VALUE([view_Journalizing].form_data, '$.data.borger_cpr_nummer_manuelt')) AS citizen_cpr,
+            JSON_VALUE([view_Journalizing].form_data, '$.data.vaelg_tandlaege_api') AS vaelg_tandlaege_api,
+            JSON_VALUE([view_Journalizing].form_data, '$.data.tandlaege_navn_manuelt') AS tandlaege_navn_manuelt,
+            JSON_VALUE([view_Journalizing].form_data, '$.data.tandlaege_adresse__dawa') AS tandlaege_adresse_manuelt,
+            JSON_VALUE([view_Journalizing].form_data, '$.data.tandlaege_ydernummer_manuelt') AS tandlaege_ydernummer_manuelt,
+            (SELECT TOP 1 JSON_VALUE(a.value, '$.url') FROM OPENJSON(JSON_QUERY([view_Journalizing].form_data, '$.data.attachments')) a) AS url,
+
+            JSON_VALUE([view_Journalizing].form_data, '$.data.tandlaege_telefonnummer_manuelt') AS tandlaege_telefonnummer_manuelt,
+
+            -- Fields for udskrivning 22 år
+            JSON_VALUE([view_Journalizing].form_data, '$.data.samtykke_valg') AS samtykke_valg,
+
+            -- Fields for tilflytter
+            JSON_VALUE([view_Journalizing].form_data, '$.data.borger_telefonnummer') AS borger_telefonnummer,
+            JSON_VALUE([view_Journalizing].form_data, '$.data.behandling_samtykke_svarer_paa_vegne_af_barn_valg') AS behandling_samtykke,
+            JSON_VALUE([view_Journalizing].form_data, '$.data.cpr_nummer_anden_foraeldremyndighed') AS cpr_nummer_anden_foraeldremyndighed,
+            JSON_VALUE([view_Journalizing].form_data, '$.data.anden_foraeldermyndighed_telefonnummer_manuelt') AS anden_foraeldermyndighed_telefonnummer_manuelt,
+            JSON_VALUE([view_Journalizing].form_data, '$.data.kommunevaelger') AS kommunevaelger,
+            JSON_VALUE([view_Journalizing].form_data, '$.data.kommunal_tandklinik_navn_manuelt') AS kommunal_tandklinik_navn_manuelt,
+
+            -- Fields for both tilflytter and fritvalg
+            JSON_VALUE([view_Journalizing].form_data, '$.data.cpr_nummer_barnet') AS cpr_nummer_barnet,
+            COALESCE(JSON_VALUE([view_Journalizing].form_data, '$.data.journal_samtykke_borger_valg'), JSON_VALUE([view_Journalizing].form_data, '$.data.journal_samtykke_svarer_paa_vegne_af_barn_valg')) AS journal_samtykke_valg
+
+        FROM [RPA].[journalizing].[view_Journalizing]
+        WHERE
+            form_type in (
+                'udskrivning_22_aar_privat_tandkl',
+                'udskrivning_22_aar_tandpleje_for',
+                'tilflytter_til_aarhus_kommune_sa',
+                'fritvalgsordning_samlet_formular'
             )
+            AND status = 'New'
+        ORDER BY
+            form_submitted_date DESC
+    """
 
-        engine = create_engine(connection_string)
+    items = helper_functions.get_items_from_query_with_params(connection_string=connection_string, query=sql, params=[])
 
-        metadata = MetaData()
-        journalizing = Table(
-            "view_Journalizing",
-            metadata,
-            Column("form_id"),
-            Column("form_type"),
-            Column("form_data"),
-            Column("status"),
-            Column("destination_system"),
-            schema="journalizing",
-        )
-        metadata_tbl = Table(
-            "Metadata",
-            metadata,
-            Column("os2formWebformId"),
-            Column("isActive"),
-            schema="journalizing",
-        )
+    for sub in items:
+        form_data = sub.get("form_data")
+        if "purged" in form_data:
+            continue
 
-        # Compose the SQL
-        borger_cpr_nummer_manuelt = text(
-            "JSON_VALUE([view_Journalizing].form_data, '$.data.borger_cpr_nummer_manuelt') AS borger_cpr_nummer_manuelt"
-        )
-        vaelg_tandlaege_api = text(
-            "JSON_VALUE([view_Journalizing].form_data, '$.data.vaelg_tandlaege_api') AS vaelg_tandlaege_api"
-        )
-        tandlaege_navn_manuelt = text(
-            "JSON_VALUE([view_Journalizing].form_data, '$.data.tandlaege_navn_manuelt') AS tandlaege_navn_manuelt"
-        )
-        tandlaege_adresse_manuelt = text(
-            "JSON_VALUE([view_Journalizing].form_data, '$.data.tandlaege_adresse__dawa') AS tandlaege_adresse_manuelt"
-        )
-        tandlaege_ydernummer_manuelt = text(
-            "JSON_VALUE([view_Journalizing].form_data, '$.data.tandlaege_ydernummer_manuelt') AS tandlaege_ydernummer_manuelt"
-        )
-        tandlaege_telefonnummer_manuelt = text(
-            "JSON_VALUE([view_Journalizing].form_data, '$.data.tandlaege_telefonnummer_manuelt') AS tandlaege_telefonnummer_manuelt"
-        )
-        samtykke_valg = text(
-            "JSON_VALUE([view_Journalizing].form_data, '$.data.samtykke_valg') AS samtykke_valg"
-        )
-        url = text(
-            "(SELECT TOP 1 JSON_VALUE(a.value, '$.url') FROM OPENJSON(JSON_QUERY([view_Journalizing].form_data, '$.data.attachments')) a) AS url"
-        )
+        form_id = sub.get("form_id")
 
-        stmt = (
-            select(
-                journalizing.c.form_id,
-                journalizing.c.form_type,
-                borger_cpr_nummer_manuelt,
-                vaelg_tandlaege_api,
-                tandlaege_navn_manuelt,
-                tandlaege_adresse_manuelt,
-                tandlaege_ydernummer_manuelt,
-                tandlaege_telefonnummer_manuelt,
-                samtykke_valg,
-                url,
-                journalizing.c.form_data,
-            )
-            .select_from(
-                journalizing.join(
-                    metadata_tbl,
-                    metadata_tbl.c.os2formWebformId == journalizing.c.form_type,
-                )
-            )
-            .where(
-                journalizing.c.status == "New",
-                journalizing.c.form_type.in_(["udskrivning_22_aar_privat_tandkl", "udskrivning_22_aar_tandpleje_for"]),
-                metadata_tbl.c.isActive == 1,
-            )
-        )
+        form_type = sub.get("form_type")
 
-        with engine.connect() as conn:
-            result_proxy = conn.execute(stmt)
+        udfylder_cpr = sub.get("citizen_cpr")
 
-            result = []
+        if sub.get("vaelg_tandlaege_api"):
+            parts = [p.strip() for p in sub["vaelg_tandlaege_api"].split("||")]
+            klinik_navn, klinik_adresse, klinik_ydernummer = parts
 
-            for row in result_proxy:
-                try:
-                    row_as_dict = row._asdict()
+        else:
+            klinik_navn = sub.get("tandlaege_navn_manuelt")
+            klinik_adresse = sub.get("tandlaege_adresse_manuelt")
+            klinik_ydernummer = sub.get("tandlaege_ydernummer_manuelt", None)
 
-                    if "purged" in row_as_dict.get("form_data"):
-                        continue
+        url = sub.get("url")
 
-                    if row_as_dict.get("vaelg_tandlaege_api"):
-                        parts = [p.strip() for p in row_as_dict["vaelg_tandlaege_api"].split("||")]
-                        klinik_navn, klinik_adresse, klinik_ydernummer = parts
+        patient_data_dict = {
+            "cpr": "",
+            "form_id": form_id,
+            "form_type": form_type,
+            "form_data": form_data,
+            "klinik_navn": klinik_navn,
+            "klinik_adresse": klinik_adresse,
+            "klinik_ydernummer": klinik_ydernummer,
+            "url": url
+        }
 
-                    else:
-                        klinik_navn = row_as_dict.get("tandlaege_navn_manuelt")
-                        klinik_adresse = row_as_dict.get("tandlaege_adresse_manuelt")
-                        klinik_ydernummer = row_as_dict.get("tandlaege_ydernummer_manuelt", None)
+        if form_type in ("udskrivning_22_aar_privat_tandkl", "udskrivning_22_aar_tandpleje_for"):
+            workqueue_name = "jou.solteqtand.udskrivning_22"
 
-                    samtykke_valg_bool = row_as_dict.get("samtykke_valg") == "ja"
+            patient_cpr = udfylder_cpr
+            samtykke_valg = sub.get("samtykke_valg") == "ja"
 
-                    data = {
-                        "cpr": row_as_dict.get("borger_cpr_nummer_manuelt"),
-                        "klinik_navn": klinik_navn,
-                        "klinik_adresse": klinik_adresse,
-                        "klinik_ydernummer": klinik_ydernummer or None,
-                        "klinik_telefonnummer": row_as_dict.get("tandlaege_telefonnummer_manuelt"),
-                        "samtykke_valg": samtykke_valg_bool,
-                        "form_id": row_as_dict.get("form_id"),
-                        "form_type": row_as_dict.get("form_type"),
-                        "form_data": row_as_dict.get("form_data"),
-                        "url": row_as_dict.get("url"),
-                    }
+            patient_data_dict["samtykke_valg"] = samtykke_valg
 
-                    result.append(data)
+        else:
+            workqueue_name = "jou.solteqtand.fritvalg"
 
-                except AttributeError:
-                    result.append(dict(row))
+            child_cpr = sub.get("cpr_nummer_barnet")
 
-        return result
+            if child_cpr:
+                patient_cpr = child_cpr
 
-    except Exception as e:
-        print(f"Error occurred while getting form data: {e}")
+            else:
+                patient_cpr = udfylder_cpr
 
-        raise
+            journal_samtykke_valg = sub.get("journal_samtykke_valg") == "ja"
+
+            patient_data_dict["journal_samtykke"] = journal_samtykke_valg
+
+            if form_type == "tilflytter_til_aarhus_kommune_sa":
+                workqueue_name = "jou.solteqtand.tilflytter"
+
+                borger_telefonnummer = sub.get("borger_telefonnummer")
+                behandling_samtykke_svarer_paa_vegne_af_barn_valg = sub.get("behandling_samtykke_svarer_paa_vegne_af_barn_valg") == "ja"
+                cpr_nummer_anden_foraeldremyndighed = sub.get("cpr_nummer_anden_foraeldremyndighed")
+                anden_foraeldermyndighed_telefonnummer_manuelt = sub.get("anden_foraeldermyndighed_telefonnummer_manuelt")
+                kommunevaelger = sub.get("kommunevaelger")
+                kommunal_tandklinik_navn_manuelt = sub.get("kommunal_tandklinik_navn_manuelt")
+
+                patient_data_dict["borger_telefonnummer"] = borger_telefonnummer
+                patient_data_dict["behandling_samtykke"] = behandling_samtykke_svarer_paa_vegne_af_barn_valg
+                patient_data_dict["cpr_nummer_anden_foraeldremyndighed"] = cpr_nummer_anden_foraeldremyndighed
+                patient_data_dict["anden_foraeldermyndighed_telefonnummer_manuelt"] = anden_foraeldermyndighed_telefonnummer_manuelt
+                patient_data_dict["kommunevaelger"] = kommunevaelger
+                patient_data_dict["kommunal_tandklinik_navn_manuelt"] = kommunal_tandklinik_navn_manuelt
+
+            elif form_type == "fritvalgsordning_samlet_formular":
+                api_admin_token = os.getenv("API_ADMIN_TOKEN")
+
+                client = ProcessDashboardClient(api_admin_token=api_admin_token)
+
+                tilflytter_process_name = "Tilflytter til Aarhus Kommune"
+
+                process_id = process.find_process_id_and_steps(client=client, process_name=tilflytter_process_name)
+
+                response = client.get(endpoint=f"/runs/?process_id={process_id}&meta_filter=cpr%3A{patient_cpr}&order_by=created_at&sort_direction=desc&page=1&size=50")
+
+                data = response.json()
+                results = data.get("items", [])
+
+                if results:
+                    logging.info("Patient has an active tilflytter process run - proceeding to cancel this run")
+
+                    process_run = results[0]
+
+                    process_run_steps = process_run.get("steps")
+
+                    step_run_id = next(
+                        (step["id"] for step in process_run_steps if step.get("step_id") == 19),
+                        None
+                    )
+
+                    helper_functions.handle_process_dashboard(client=client, status="cancelled", step_run_id=step_run_id, failure=None)
+
+        patient_data_dict["cpr"] = patient_cpr
+
+        workqueue = helper_functions.fetch_workqueue(workqueue_name=workqueue_name)
+
+        existing_refs = {str(r) for r in helper_functions.get_workqueue_item_references(workqueue)}
+        if form_id in existing_refs:
+            logging.info(f"Form {form_id} already exists → skipping.")
+
+        else:
+            workqueue.add_item(data={"item": {"reference": form_id, "data": patient_data_dict}}, reference=form_id)
+
+            logging.info(f"Created new workitem for form_id {form_id}.")
