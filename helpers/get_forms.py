@@ -69,6 +69,8 @@ def main():
         if "purged" in form_data:
             continue
 
+        workqueue_name = ""
+
         form_id = sub.get("form_id")
 
         form_type = sub.get("form_type")
@@ -106,8 +108,6 @@ def main():
             patient_data_dict["samtykke_valg"] = samtykke_valg
 
         else:
-            workqueue_name = "jou.solteqtand.fritvalg"
-
             child_cpr = sub.get("cpr_nummer_barnet")
 
             if child_cpr:
@@ -138,6 +138,8 @@ def main():
                 patient_data_dict["kommunal_tandklinik_navn_manuelt"] = kommunal_tandklinik_navn_manuelt
 
             elif form_type == "fritvalgsordning_samlet_formular":
+                workqueue_name = "jou.solteqtand.fritvalg"
+
                 api_admin_token = os.getenv("API_ADMIN_TOKEN")
 
                 client = ProcessDashboardClient(api_admin_token=api_admin_token)
@@ -165,7 +167,24 @@ def main():
 
                     helper_functions.handle_process_dashboard(client=client, status="cancelled", step_run_id=step_run_id, failure=None)
 
-        patient_data_dict["cpr"] = patient_cpr
+                # Add to fritvalg process workqueue to start the process for the patient
+                patient_data_dict["cpr"] = patient_cpr
+
+                reference = patient_cpr
+
+                fritvalg_process_workqueue_name = "tan.fritvalg.fritvalg_registreret"
+                fritvalg_process_workqueue = helper_functions.fetch_workqueue(workqueue_name=fritvalg_process_workqueue_name)
+                fritvalg_process_existing_refs = {str(r) for r in helper_functions.get_workqueue_item_references(fritvalg_process_workqueue)}
+                if reference in fritvalg_process_existing_refs:
+                    logging.info(f"Form {form_id} already exists → skipping.")
+
+                else:
+                    fritvalg_process_workqueue.add_item(data={"item": {"reference": reference, "data": patient_data_dict}}, reference=reference)
+
+                    logging.info(f"Created new workitem for form_id {form_id}.")
+
+        if patient_data_dict["cpr"] == "":
+            patient_data_dict["cpr"] = patient_cpr
 
         workqueue = helper_functions.fetch_workqueue(workqueue_name=workqueue_name)
 
