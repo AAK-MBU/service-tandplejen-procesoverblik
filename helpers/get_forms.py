@@ -161,7 +161,7 @@ def main():
                     process_run_steps = process_run.get("steps")
 
                     step_run_id = next(
-                        (step["id"] for step in process_run_steps if step.get("step_id") == 19),
+                        (step["id"] for step in process_run_steps if step.get("step_id") == 12),
                         None
                     )
 
