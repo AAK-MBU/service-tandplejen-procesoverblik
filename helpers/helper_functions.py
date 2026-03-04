@@ -4,8 +4,14 @@ import os
 import logging
 import requests
 
+import pyodbc
+
 from automation_server_client import AutomationServer
 from automation_server_client._models import Workqueue
+
+from mbu_process_dashboard_shared_components.process_dashboard_client import ProcessDashboardClient
+
+from mbu_process_dashboard_shared_components import process_step_run
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +20,69 @@ ATS_URL = os.getenv("ATS_URL")
 
 DBCONNECTIONSTRINGPROD = os.getenv("DBCONNECTIONSTRINGPROD")
 DBCONNECTIONSTRINGDEV = os.getenv("DBCONNECTIONSTRINGDEV")
+
+
+def handle_process_dashboard(client: ProcessDashboardClient, status: str, step_run_id: str, failure: Exception | None = None):
+    """
+    Method for handling updating the process dashboard
+    """
+
+    status_update_data = {
+        "status": status
+    }
+
+    if failure:
+        step_run_update_data = process_step_run.build_step_run_update(status=status, failure=failure)
+
+        status_update_data["failure"] = failure
+
+    else:
+        step_run_update_data = process_step_run.build_step_run_update(status=status)
+
+    logger.info("before update_dashboard_step_run_by_id() ...")
+
+    updated_step_run_data, status_code = process_step_run.update_dashboard_step_run_by_id(client=client, step_run_id=step_run_id, update_data=step_run_update_data)
+
+    return updated_step_run_data, status_code
+
+
+def get_items_from_query_with_params(connection_string, query, params):
+    """
+    Execute a parameterized SQL query and return results as dictionaries.
+
+    Ensures:
+    - Safe parameter binding
+    - Automatic column-to-value mapping
+    - Consistent string cleanup
+
+    Args:
+        connection_string (str): SQL Server connection string.
+        query (str): SQL query with placeholders.
+        params (list): Parameters for the query.
+
+    Returns:
+        list[dict]: Query results.
+    """
+
+    try:
+        with pyodbc.connect(connection_string) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute(query, params or [])
+                rows = cursor.fetchall()
+                columns = [c[0] for c in cursor.description]
+
+                return [
+                    {
+                        col: val.strip() if isinstance(val, str) else val
+                        for col, val in zip(columns, row)
+                    }
+                    for row in rows
+                ]
+
+    except Exception as e:
+        print(f"Database error: {e}")
+
+        raise
 
 
 def fetch_workqueue(workqueue_name: str):

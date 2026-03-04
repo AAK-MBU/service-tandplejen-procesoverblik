@@ -18,7 +18,7 @@ def main():
     samtykke_step_id = None
     journal_og_roentgen_afleveret_og_journaliseret_step_id = None
 
-    base_url = "https://mbu-dashboard-api.adm.aarhuskommune.dk/api/v1/"
+    base_url = "https://mbu-dashboard-api.adm.aarhuskommune.dk/api/v1"
 
     udskrivning_process = _find_process_by_name(base_url=base_url, process_name="Udskrivning 22 år")
     udskrivning_process_id = int(udskrivning_process.get("id"))
@@ -80,7 +80,7 @@ def _find_process_by_name(base_url: str, process_name: str):
     size = 100
 
     while True:
-        url = f"{base_url}processes/?page={page}&size={size}"
+        url = f"{base_url}/processes/?page={page}&size={size}"
         response = requests.get(url, headers=headers, timeout=10)
 
         if response.status_code != 200:
@@ -128,7 +128,7 @@ def _find_ready_process_runs(
     size = 100
 
     while True:
-        url = f"{base_url}runs/?process_id={process_id}&run_status=running&order_by=created_at&sort_direction=desc&page={page}&size={size}"
+        url = f"{base_url}/runs/?process_id={process_id}&run_status=running&order_by=created_at&sort_direction=desc&page={page}&size={size}"
         response = requests.get(url, headers=headers, timeout=10)
 
         if response.status_code != 200:

@@ -5,7 +5,12 @@ import logging
 
 from config import PATH_TO_REQUESTS_CA_BUNDLE
 
-from helpers import helper_functions, faglig_vurdering_udfoert, get_forms, add_to_final_queue, reevaluate_faglig_vurdering
+from helpers import (
+    faglig_vurdering_udfoert,
+    get_forms,
+    add_to_final_queue,
+    reevaluate_faglig_vurdering,
+)
 
 os.environ["REQUESTS_CA_BUNDLE"] = PATH_TO_REQUESTS_CA_BUNDLE
 
@@ -46,45 +51,22 @@ def main_loop():
         try:
             # Step 1 - Checking 'faglig_vurdering_udfoert' workqueue...
             logging.info("Step 1 - Checking 'faglig_vurdering_udfoert' workqueue...")
-            workqueue_name = "tan.udskrivning22.faglig_vurdering_udfoert"
-
-            workqueue = helper_functions.fetch_workqueue(workqueue_name)
-            workitems = helper_functions.fetch_workqueue_workitems(workqueue)
-
-            logging.info("before faglig main()")
-            faglig_vurdering_udfoert.main(workitems)
+            faglig_vurdering_udfoert.main()
             logging.info("Step 1 DONE.")
 
             # Step 2 - Checking formular submissions...
             logging.info("Step 2 - Checking formular submissions...")
-            form_results = get_forms.get_forms()
-            logging.info(f"Found {len(form_results)} forms.")
-            print(f"Found {len(form_results)} forms.")
-
-            journalising_workqueue_name = "jou.solteqtand.udskrivning_22"
-            journalising_workqueue = helper_functions.fetch_workqueue(journalising_workqueue_name)
-            existing_refs = {str(r) for r in helper_functions.get_workqueue_item_references(journalising_workqueue)}
-
-            for res in form_results:
-                form_id = res.get("form_id")
-
-                if form_id in existing_refs:
-                    logging.info(f"Form {form_id} already exists → skipping.")
-
-                else:
-                    journalising_workqueue.add_item(data={"item": {"reference": form_id, "data": res}}, reference=form_id)
-                    logging.info(f"Created new workitem for form_id {form_id}.")
-
+            get_forms.main()
             logging.info("Step 2 DONE.")
 
-            # Step 3 - Processing final queue...
-            logging.info("Step 3 - Processing final queue...")
-            add_to_final_queue.main()
+            # Step 3 - Checking for incomplete incidents of faglig vurdering...
+            logging.info("Step 3 - Checking for incomplete incidents of faglig vurdering...")
+            reevaluate_faglig_vurdering.main()
             logging.info("Step 3 DONE.")
 
-            # Step 4 - Checking for incomplete incidents of faglig vurdering...
-            logging.info("Step 4 - Checking for incomplete incidents of faglig vurdering...")
-            reevaluate_faglig_vurdering.main()
+            # Step 4 - Processing final queue...
+            logging.info("Step 4 - Processing final queue...")
+            add_to_final_queue.main()
             logging.info("Step 4 DONE.")
 
             # Sleep 5 minutes
