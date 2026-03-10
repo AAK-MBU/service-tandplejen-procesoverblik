@@ -65,6 +65,8 @@ def main():
     items = helper_functions.get_items_from_query_with_params(connection_string=connection_string, query=sql, params=[])
 
     for sub in items:
+        dev = False
+
         form_data = sub.get("form_data")
         if "purged" in form_data:
             continue
@@ -121,6 +123,8 @@ def main():
             patient_data_dict["journal_samtykke"] = journal_samtykke_valg
 
             if form_type == "tilflytter_til_aarhus_kommune_sa":
+                dev = True
+
                 workqueue_name = "jou.solteqtand.tilflytter"
 
                 borger_telefonnummer = sub.get("borger_telefonnummer")
@@ -138,11 +142,13 @@ def main():
                 patient_data_dict["kommunal_tandklinik_navn_manuelt"] = kommunal_tandklinik_navn_manuelt
 
             elif form_type == "fritvalgsordning_samlet_formular":
+                dev = True
+
                 workqueue_name = "jou.solteqtand.fritvalg"
 
                 api_admin_token = os.getenv("API_ADMIN_TOKEN")
 
-                client = ProcessDashboardClient(api_admin_token=api_admin_token)
+                client = ProcessDashboardClient(api_admin_token=api_admin_token, base_url="https://dev-mbu-dashboard-api.adm.aarhuskommune.dk/api/v1")
 
                 tilflytter_process_name = "Tilflytter til Aarhus Kommune"
 
@@ -186,7 +192,7 @@ def main():
         if patient_data_dict["cpr"] == "":
             patient_data_dict["cpr"] = patient_cpr
 
-        workqueue = helper_functions.fetch_workqueue(workqueue_name=workqueue_name)
+        workqueue = helper_functions.fetch_workqueue(workqueue_name=workqueue_name, dev=dev)
 
         existing_refs = {str(r) for r in helper_functions.get_workqueue_item_references(workqueue)}
         if form_id in existing_refs:
