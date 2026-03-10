@@ -3,6 +3,13 @@ import signal
 import time
 import logging
 
+from pathlib import Path
+from dotenv import load_dotenv
+
+BASE_DIR = Path(__file__).resolve().parent
+
+load_dotenv(BASE_DIR / "config.py", override=True)
+
 from config import PATH_TO_REQUESTS_CA_BUNDLE
 
 from helpers import (
@@ -49,25 +56,27 @@ def main_loop():
 
     while running:
         try:
-            # Step 1 - Checking 'faglig_vurdering_udfoert' workqueue...
-            logging.info("Step 1 - Checking 'faglig_vurdering_udfoert' workqueue...")
-            faglig_vurdering_udfoert.main()
-            logging.info("Step 1 DONE.")
+            # # Step 1 - Checking 'faglig_vurdering_udfoert' workqueue...
+            # logging.info("Step 1 - Checking 'faglig_vurdering_udfoert' workqueue...")
+            # faglig_vurdering_udfoert.main()
+            # logging.info("Step 1 DONE.")
 
             # Step 2 - Checking formular submissions...
             logging.info("Step 2 - Checking formular submissions...")
+            print("Step 2 - Checking formular submissions...")
             get_forms.main()
             logging.info("Step 2 DONE.")
+            print("Step 2 DONE.")
 
-            # Step 3 - Checking for incomplete incidents of faglig vurdering...
-            logging.info("Step 3 - Checking for incomplete incidents of faglig vurdering...")
-            reevaluate_faglig_vurdering.main()
-            logging.info("Step 3 DONE.")
+            # # Step 3 - Checking for incomplete incidents of faglig vurdering...
+            # logging.info("Step 3 - Checking for incomplete incidents of faglig vurdering...")
+            # reevaluate_faglig_vurdering.main()
+            # logging.info("Step 3 DONE.")
 
-            # Step 4 - Processing final queue...
-            logging.info("Step 4 - Processing final queue...")
-            add_to_final_queue.main()
-            logging.info("Step 4 DONE.")
+            # # Step 4 - Processing final queue...
+            # logging.info("Step 4 - Processing final queue...")
+            # add_to_final_queue.main()
+            # logging.info("Step 4 DONE.")
 
             # Sleep 5 minutes
             logging.info("Sleeping for 5 minutes...")

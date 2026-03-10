@@ -15,14 +15,11 @@ from mbu_process_dashboard_shared_components import process_step_run
 
 logger = logging.getLogger(__name__)
 
-ATS_TOKEN = os.getenv("ATS_TOKEN")
-ATS_URL = os.getenv("ATS_URL")
+DBCONNECTIONSTRINGPROD = os.getenv("DBCONNECTIONSTRINGPROD")
+DBCONNECTIONSTRINGDEV = os.getenv("DBCONNECTIONSTRINGDEV")
 
 ATS_TOKEN_DEV = os.getenv("ATS_TOKEN_DEV")
 ATS_URL_DEV = os.getenv("ATS_URL_DEV")
-
-DBCONNECTIONSTRINGPROD = os.getenv("DBCONNECTIONSTRINGPROD")
-DBCONNECTIONSTRINGDEV = os.getenv("DBCONNECTIONSTRINGDEV")
 
 
 def handle_process_dashboard(client: ProcessDashboardClient, status: str, step_run_id: str, failure: Exception | None = None):
@@ -93,12 +90,12 @@ def fetch_workqueue(workqueue_name: str, dev: bool = False):
     Helper function to fetch the desired workqueue based on a provided workqueue_name
     """
 
-    url = ATS_URL
-    token = ATS_TOKEN
-
     if dev:
-        url = ATS_URL_DEV
-        token = ATS_TOKEN_DEV
+        os.environ["ATS_URL"] = ATS_URL_DEV
+        os.environ["ATS_TOKEN"] = ATS_TOKEN_DEV
+
+    token = os.getenv("ATS_TOKEN")
+    url = os.getenv("ATS_URL")
 
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -119,7 +116,10 @@ def fetch_workqueue_workitems(workqueue: Workqueue):
     Helper function to fetch all workitems for a given workqueue (with pagination).
     """
 
-    ats_headers = {"Authorization": f"Bearer {ATS_TOKEN}"}
+    token = os.getenv("ATS_TOKEN")
+    url = os.getenv("ATS_URL")
+
+    ats_headers = {"Authorization": f"Bearer {token}"}
 
     all_items = []
 
@@ -128,7 +128,7 @@ def fetch_workqueue_workitems(workqueue: Workqueue):
     size = 200  # use max allowed per page to minimize requests
 
     while True:
-        full_url = f"{ATS_URL}/workqueues/{workqueue.id}/items?page={page}&size={size}"
+        full_url = f"{url}/workqueues/{workqueue.id}/items?page={page}&size={size}"
         response = requests.get(full_url, headers=ats_headers, timeout=60)
         response.raise_for_status()
 
@@ -152,12 +152,12 @@ def get_workqueue_item_references(workqueue: Workqueue, dev: bool = False):
     If the queue is empty, return an empty list.
     """
 
-    url = ATS_URL
-    token = ATS_TOKEN
-
     if dev:
-        url = ATS_URL_DEV
-        token = ATS_TOKEN_DEV
+        os.environ["ATS_URL"] = ATS_URL_DEV
+        os.environ["ATS_TOKEN"] = ATS_TOKEN_DEV
+
+    token = os.getenv("ATS_TOKEN")
+    url = os.getenv("ATS_URL")
 
     if not url or not token:
         raise OSError("ATS_URL or ATS_TOKEN is not set in the environment")
