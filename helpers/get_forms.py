@@ -179,8 +179,8 @@ def main():
                 reference = patient_cpr
 
                 fritvalg_process_workqueue_name = "tan.fritvalg.fritvalg_registreret"
-                fritvalg_process_workqueue = helper_functions.fetch_workqueue(workqueue_name=fritvalg_process_workqueue_name)
-                fritvalg_process_existing_refs = {str(r) for r in helper_functions.get_workqueue_item_references(fritvalg_process_workqueue)}
+                fritvalg_process_workqueue = helper_functions.fetch_workqueue(workqueue_name=fritvalg_process_workqueue_name, dev=dev)
+                fritvalg_process_existing_refs = {str(r) for r in helper_functions.get_workqueue_item_references(fritvalg_process_workqueue, dev=dev)}
                 if reference in fritvalg_process_existing_refs:
                     logging.info(f"Form {form_id} already exists → skipping.")
 
@@ -194,7 +194,7 @@ def main():
 
         workqueue = helper_functions.fetch_workqueue(workqueue_name=workqueue_name, dev=dev)
 
-        existing_refs = {str(r) for r in helper_functions.get_workqueue_item_references(workqueue)}
+        existing_refs = {str(r) for r in helper_functions.get_workqueue_item_references(workqueue, dev=dev)}
         if form_id in existing_refs:
             logging.info(f"Form {form_id} already exists → skipping.")
 

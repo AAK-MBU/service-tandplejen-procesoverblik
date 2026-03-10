@@ -93,12 +93,12 @@ def fetch_workqueue(workqueue_name: str, dev: bool = False):
     Helper function to fetch the desired workqueue based on a provided workqueue_name
     """
 
-    token = ATS_TOKEN
     url = ATS_URL
+    token = ATS_TOKEN
 
     if dev:
-        token = ATS_TOKEN_DEV
         url = ATS_URL_DEV
+        token = ATS_TOKEN_DEV
 
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -146,7 +146,7 @@ def fetch_workqueue_workitems(workqueue: Workqueue):
     return all_items
 
 
-def get_workqueue_item_references(workqueue: Workqueue):
+def get_workqueue_item_references(workqueue: Workqueue, dev: bool = False):
     """
     Retrieve items from the specified workqueue.
     If the queue is empty, return an empty list.
@@ -154,6 +154,10 @@ def get_workqueue_item_references(workqueue: Workqueue):
 
     url = ATS_URL
     token = ATS_TOKEN
+
+    if dev:
+        url = ATS_URL_DEV
+        token = ATS_TOKEN_DEV
 
     if not url or not token:
         raise OSError("ATS_URL or ATS_TOKEN is not set in the environment")
