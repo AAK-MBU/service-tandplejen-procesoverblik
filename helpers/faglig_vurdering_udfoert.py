@@ -45,9 +45,6 @@ def main():
 
                     item.update_status(status="new", message="Status opdateret af service")
 
-                else:
-                    logging.info(f"Faglig vurdering not yet completed for citizen {citizen_cpr} - leaving workitem as is.")
-
 
 def _check_if_faglig_vurdering_udfoert(db_handler: SolteqTandDatabase, cpr: str):
     """
