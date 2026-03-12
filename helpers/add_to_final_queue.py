@@ -49,8 +49,8 @@ def main():
     logging.info(f"found {len(ready_process_runs)} ready process runs.")
 
     workqueue_name = "tan.udskrivning22.journal_og_roentgen_afleveret"
-    workqueue = helper_functions.fetch_workqueue(workqueue_name)
-    existing_refs = {str(r) for r in helper_functions.get_workqueue_item_references(workqueue)}
+    workqueue = helper_functions.fetch_workqueue(workqueue_name=workqueue_name, dev=False)
+    existing_refs = {str(r) for r in helper_functions.get_workqueue_item_references(workqueue=workqueue, dev=False)}
 
     for process_run in ready_process_runs:
         meta = process_run.get("meta", {})
