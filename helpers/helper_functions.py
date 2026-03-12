@@ -18,6 +18,9 @@ logger = logging.getLogger(__name__)
 DBCONNECTIONSTRINGPROD = os.getenv("DBCONNECTIONSTRINGPROD")
 DBCONNECTIONSTRINGDEV = os.getenv("DBCONNECTIONSTRINGDEV")
 
+ATS_TOKEN = os.getenv("ATS_TOKEN")
+ATS_URL = os.getenv("ATS_URL")
+
 ATS_TOKEN_DEV = os.getenv("ATS_TOKEN_DEV")
 ATS_URL_DEV = os.getenv("ATS_URL_DEV")
 
@@ -94,6 +97,10 @@ def fetch_workqueue(workqueue_name: str, dev: bool = False):
         os.environ["ATS_URL"] = ATS_URL_DEV
         os.environ["ATS_TOKEN"] = ATS_TOKEN_DEV
 
+    else:
+        os.environ["ATS_URL"] = ATS_URL
+        os.environ["ATS_TOKEN"] = ATS_TOKEN
+
     token = os.getenv("ATS_TOKEN")
     url = os.getenv("ATS_URL")
 
@@ -155,6 +162,10 @@ def get_workqueue_item_references(workqueue: Workqueue, dev: bool = False):
     if dev:
         os.environ["ATS_URL"] = ATS_URL_DEV
         os.environ["ATS_TOKEN"] = ATS_TOKEN_DEV
+
+    else:
+        os.environ["ATS_URL"] = ATS_URL
+        os.environ["ATS_TOKEN"] = ATS_TOKEN
 
     token = os.getenv("ATS_TOKEN")
     url = os.getenv("ATS_URL")
