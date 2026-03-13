@@ -46,6 +46,8 @@ def main():
             JSON_VALUE([view_Journalizing].form_data, '$.data.kommunal_tandklinik_navn_manuelt') AS kommunal_tandklinik_navn_manuelt,
 
             -- Fields for both tilflytter and fritvalg
+            JSON_VALUE([view_Journalizing].form_data, '$.data.borger_navn') AS borger_navn,
+            JSON_VALUE([view_Journalizing].form_data, '$.data.barnets_navn') AS barnets_navn,
             JSON_VALUE([view_Journalizing].form_data, '$.data.cpr_nummer_barnet') AS cpr_nummer_barnet,
             COALESCE(JSON_VALUE([view_Journalizing].form_data, '$.data.journal_samtykke_borger_valg'), JSON_VALUE([view_Journalizing].form_data, '$.data.journal_samtykke_svarer_paa_vegne_af_barn_valg')) AS journal_samtykke_valg
 
@@ -114,9 +116,11 @@ def main():
 
             if child_cpr:
                 patient_cpr = child_cpr
+                patient_name = sub.get("barnets_navn")
 
             else:
                 patient_cpr = udfylder_cpr
+                patient_name = sub.get("borger_navn")
 
             journal_samtykke_valg = sub.get("journal_samtykke_valg") == "ja"
 
@@ -179,6 +183,7 @@ def main():
                     helper_functions.handle_process_dashboard(client=client, status="cancelled", step_run_id=step_run_id, failure=None)
 
                 patient_data_dict["cpr"] = patient_cpr
+                patient_data_dict["name"] = patient_name
 
         if patient_data_dict["cpr"] == "":
             patient_data_dict["cpr"] = patient_cpr
