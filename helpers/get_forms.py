@@ -144,7 +144,7 @@ def main():
             elif form_type == "fritvalgsordning_samlet_formular":
                 dev = True
 
-                workqueue_name = "jou.solteqtand.fritvalg"
+                workqueue_name = "tan.fritvalg.fritvalg_registreret"
 
                 api_admin_token = os.getenv("API_ADMIN_TOKEN")
 
@@ -152,7 +152,12 @@ def main():
 
                 tilflytter_process_name = "Tilflytter til Aarhus Kommune"
 
-                process_id = process.find_process_id_and_steps(client=client, process_name=tilflytter_process_name)
+                process_id, tilflytter_process_steps = process.find_process_id_and_steps(client=client, process_name=tilflytter_process_name)
+
+                borger_valgt_privat_step_id = next(
+                    (step.get("name") for step in tilflytter_process_steps if step.get("name") == "Borger har valgt privat tandklinik"),
+                    None
+                )
 
                 response = client.get(endpoint=f"/runs/?process_id={process_id}&meta_filter=cpr%3A{patient_cpr}&order_by=created_at&sort_direction=desc&page=1&size=50")
 
@@ -167,27 +172,13 @@ def main():
                     process_run_steps = process_run.get("steps")
 
                     step_run_id = next(
-                        (step["id"] for step in process_run_steps if step.get("step_id") == 12),
+                        (step.get("step_id") for step in process_run_steps if step.get("step_id") == borger_valgt_privat_step_id),
                         None
                     )
 
                     helper_functions.handle_process_dashboard(client=client, status="cancelled", step_run_id=step_run_id, failure=None)
 
-                # Add to fritvalg process workqueue to start the process for the patient
                 patient_data_dict["cpr"] = patient_cpr
-
-                reference = patient_cpr
-
-                fritvalg_process_workqueue_name = "tan.fritvalg.fritvalg_registreret"
-                fritvalg_process_workqueue = helper_functions.fetch_workqueue(workqueue_name=fritvalg_process_workqueue_name, dev=dev)
-                fritvalg_process_existing_refs = {str(r) for r in helper_functions.get_workqueue_item_references(fritvalg_process_workqueue, dev=dev)}
-                if reference in fritvalg_process_existing_refs:
-                    logging.info(f"Form {form_id} already exists → skipping.")
-
-                else:
-                    fritvalg_process_workqueue.add_item(data={"item": {"reference": reference, "data": patient_data_dict}}, reference=reference)
-
-                    logging.info(f"Created new workitem for form_id {form_id}.")
 
         if patient_data_dict["cpr"] == "":
             patient_data_dict["cpr"] = patient_cpr
@@ -195,10 +186,17 @@ def main():
         workqueue = helper_functions.fetch_workqueue(workqueue_name=workqueue_name, dev=dev)
 
         existing_refs = {str(r) for r in helper_functions.get_workqueue_item_references(workqueue, dev=dev)}
-        if form_id in existing_refs:
-            logging.info(f"Form {form_id} already exists → skipping.")
+
+        if form_type == "fritvalgsordning_samlet_formular":
+            ref = patient_cpr
 
         else:
-            workqueue.add_item(data={"item": {"reference": form_id, "data": patient_data_dict}}, reference=form_id)
+            ref = form_id
 
-            logging.info(f"Created new workitem for form_id {form_id}.")
+        if ref in existing_refs:
+            logging.info(f"Reference {ref} already exists → skipping.")
+
+        else:
+            workqueue.add_item(data={"item": {"reference": ref, "data": patient_data_dict}}, reference=ref)
+
+            logging.info(f"Created new workitem for form_id {ref}.")
