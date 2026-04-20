@@ -17,11 +17,32 @@ API_ADMIN_TOKEN = os.getenv("API_ADMIN_TOKEN")
 def main():
     """Main function to execute the script."""
 
+    for process in ["udskrivning", "fritvalg"]:
+        _fetch_reevaluation(process=process)
+
+
+def _fetch_reevaluation(process: str):
+    """
+    Logic to fetch the processes and evaluate if any runs are ready, but missing faglig vurdering
+    """
+
     result = []
 
     connection_string = os.environ.get("DBCONNECTIONSTRINGPROCESSDASHBOARDPROD")
 
-    sql = """
+    if process == "fritvalg":
+        faglig_vurdering = "33"
+        journal_sendt = "35"
+
+        base_url = "https://dev-mbu-dashboard-api.adm.aarhuskommune.dk/api/v1"
+
+    else:
+        faglig_vurdering = "3"
+        journal_sendt = "8"
+
+        base_url = "https://mbu-dashboard-api.adm.aarhuskommune.dk/api/v1/"
+
+    sql = f"""
         WITH all_steps AS (
             SELECT
                 pr.entity_id,
@@ -39,7 +60,7 @@ def main():
                 entity_id,
                 run_id
             FROM all_steps
-            WHERE step_id NOT IN (3, 8)
+            WHERE step_id NOT IN ({faglig_vurdering}, {journal_sendt})
             GROUP BY entity_id, run_id
             HAVING COUNT(*) = SUM(CASE WHEN status = 'SUCCESS' THEN 1 ELSE 0 END)
         ),
@@ -49,7 +70,7 @@ def main():
                 entity_id,
                 run_id
             FROM all_steps
-            WHERE step_id IN (3, 8)
+            WHERE step_id IN ({faglig_vurdering}, {journal_sendt})
             AND status = 'SUCCESS'
             GROUP BY entity_id, run_id
         )
@@ -58,22 +79,22 @@ def main():
             v.run_id,
 
             -- Step 3 fields
-            MAX(CASE WHEN s.step_id = 3 THEN s.step_run_id END) AS step3_id,
-            MAX(CASE WHEN s.step_id = 3 THEN s.status END)       AS step3_status,
+            MAX(CASE WHEN s.step_id = {faglig_vurdering} THEN s.step_run_id END) AS step3_id,
+            MAX(CASE WHEN s.step_id = {faglig_vurdering} THEN s.status END)      AS step3_status,
 
             -- Step 8 fields
-            MAX(CASE WHEN s.step_id = 8 THEN s.step_run_id END) AS step8_id,
-            MAX(CASE WHEN s.step_id = 8 THEN s.status END)       AS step8_status
+            MAX(CASE WHEN s.step_id = {journal_sendt} THEN s.step_run_id END) AS step8_id,
+            MAX(CASE WHEN s.step_id = {journal_sendt} THEN s.status END)      AS step8_status
 
         FROM valid_runs v
         INNER JOIN all_steps s
             ON v.run_id = s.run_id
-        AND s.step_id IN (3, 8)     -- Only track 2 steps
+        AND s.step_id IN ({faglig_vurdering}, {journal_sendt})     -- Only track 2 steps
         LEFT JOIN invalid_steps i
             ON v.entity_id = i.entity_id
         AND v.run_id = i.run_id
         WHERE i.run_id IS NULL         -- Track 2 must NOT be SUCCESS
-        GROUP BY 
+        GROUP BY
             v.entity_id,
             v.run_id;
     """
@@ -115,35 +136,25 @@ def main():
 
         raise e
 
-    if len(result) == 0:
-        return None
+    if len(result) > 0:
+        for row in result:
+            print(row)
 
-    for row in result:
-        print(row)
+            headers = {
+                "X-API-Key": os.getenv("API_ADMIN_TOKEN"),
+                "Content-Type": "application/json"
+            }
 
-        faglig_vurdering_step_id = row.get("step3_id")
+            faglig_vurdering_step_id = row.get(f"step{faglig_vurdering}id")
 
-        headers = {
-            "X-API-Key": os.getenv("API_ADMIN_TOKEN"),
-            "Content-Type": "application/json"
-        }
+            url = f"{base_url}step-runs/{faglig_vurdering_step_id}"
 
-        base_url = "https://mbu-dashboard-api.adm.aarhuskommune.dk/api/v1/"
+            json_data = {
+                "status": "failed"
+            }
 
-        url = f"{base_url}step-runs/{faglig_vurdering_step_id}"
+            response = requests.patch(url=url, json=json_data, headers=headers, timeout=10)
 
-        json_data = {
-            "status": "failed"
-        }
-
-        response = requests.patch(url=url, json=json_data, headers=headers, timeout=10)
-
-        if response.status_code != 200:
-            print("ERROR")
-            logging.info("ERROR")
-
-    return
-
-
-if __name__ == '__main__':
-    main()
+            if response.status_code != 200:
+                print("ERROR")
+                logging.info("ERROR")
