@@ -40,7 +40,7 @@ def main():
 
             item_data = item.data
 
-            citizen_cpr = item_data.get("cpr")
+            citizen_cpr = item_data["item"]["data"]["cpr"]
 
             db_handler = SolteqTandDatabase(conn_str=SOLTEQ_TAND_DB_CONN_STRING)
 
