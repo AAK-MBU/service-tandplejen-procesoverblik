@@ -38,7 +38,9 @@ def main():
 
             item = WorkItem(**item_dict)
 
-            citizen_cpr = item.reference
+            item_data = item.data
+
+            citizen_cpr = item_data.get("cpr")
 
             db_handler = SolteqTandDatabase(conn_str=SOLTEQ_TAND_DB_CONN_STRING)
 
