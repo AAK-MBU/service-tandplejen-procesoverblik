@@ -49,9 +49,9 @@ def main():
             if results:
                 if len(results) > 1:
                     if process == "fritvalg":
-                        logging.info(f"Citizen {citizen_cpr} has more than 1 'Fritvalgsordning godkendt'-event!")
+                        logging.info(f"Citizen {citizen_cpr} has more than 1 'Frit valg - Klar til robot'-event!")
 
-                        item.fail(message="Borgeren har mere end 1 'Fritvalgsordning godkendt'-hændelse!")
+                        item.fail(message="Borgeren har mere end 1 'Frit valg - Klar til robot'-hændelse!")
 
                     else:
                         logging.info(f"Citizen {citizen_cpr} has more than 1 booking with aftaletype 'Z - 22 år - Borger fyldt 22 år'!")
@@ -79,7 +79,7 @@ def _check_if_faglig_vurdering_udfoert(db_handler: SolteqTandDatabase, cpr: str,
 
     if process == "fritvalg":
         filters = {
-            "e.currentStateText": "Fritvalgsordning godkendt",
+            "e.currentStateText": "Frit valg - Klar til robot",
             "p.cpr": cpr,
             "e.archived": 0,
         }
