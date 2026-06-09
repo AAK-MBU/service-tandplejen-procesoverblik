@@ -20,7 +20,7 @@ def main():
         if process == "fritvalg":
             workqueue_name = "tan.fritvalg.faglig_vurdering_udfoert"
 
-            dev = True
+            dev = False
 
         else:
             workqueue_name = "tan.udskrivning22.faglig_vurdering_udfoert"

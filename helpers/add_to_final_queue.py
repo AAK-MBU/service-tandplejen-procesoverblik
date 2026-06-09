@@ -36,7 +36,7 @@ PROCESS_CONFIGS = [
         success_step_names=PREREQUISITE_STEPS,
         pending_step_name="Besked til privat tandklinik afsendt og journaliseret",
         workqueue_name="tan.fritvalg.journal_og_roentgen_afleveret",
-        dev=True,
+        dev=False,
     ),
 ]
 

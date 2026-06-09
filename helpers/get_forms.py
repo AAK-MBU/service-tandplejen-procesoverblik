@@ -146,8 +146,6 @@ def main():
                 patient_data_dict["kommunal_tandklinik_navn_manuelt"] = kommunal_tandklinik_navn_manuelt
 
             elif form_type == "fritvalgsordning_samlet_formular":
-                dev = True
-
                 workqueue_name = "tan.fritvalg.fritvalg_registreret"
 
                 api_admin_token = os.getenv("API_ADMIN_TOKEN")
