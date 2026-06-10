@@ -34,7 +34,7 @@ def _fetch_reevaluation(process: str):
         faglig_vurdering = "19"
         journal_sendt = "22"
 
-        base_url = "https://mbu-dashboard-api.adm.aarhuskommune.dk/api/v1"
+        base_url = "https://mbu-dashboard-api.adm.aarhuskommune.dk/api/v1/"
 
     else:
         faglig_vurdering = "3"
@@ -78,13 +78,13 @@ def _fetch_reevaluation(process: str):
             v.entity_id,
             v.run_id,
 
-            -- Step 3 fields
-            MAX(CASE WHEN s.step_id = {faglig_vurdering} THEN s.step_run_id END) AS step3_id,
-            MAX(CASE WHEN s.step_id = {faglig_vurdering} THEN s.status END)      AS step3_status,
+            -- Faglig vurdering step fields
+            MAX(CASE WHEN s.step_id = {faglig_vurdering} THEN s.step_run_id END) AS vurdering_step_id,
+            MAX(CASE WHEN s.step_id = {faglig_vurdering} THEN s.status END)      AS vurdering_status,
 
-            -- Step 8 fields
-            MAX(CASE WHEN s.step_id = {journal_sendt} THEN s.step_run_id END) AS step8_id,
-            MAX(CASE WHEN s.step_id = {journal_sendt} THEN s.status END)      AS step8_status
+            -- Journal sendt step fields
+            MAX(CASE WHEN s.step_id = {journal_sendt} THEN s.step_run_id END) AS journal_step_id,
+            MAX(CASE WHEN s.step_id = {journal_sendt} THEN s.status END)      AS journal_status
 
         FROM valid_runs v
         INNER JOIN all_steps s
@@ -138,14 +138,14 @@ def _fetch_reevaluation(process: str):
 
     if len(result) > 0:
         for row in result:
-            print(row)
+            logging.info(f"Found incomplete reevaluation candidate: {row}")
 
             headers = {
                 "X-API-Key": os.getenv("API_ADMIN_TOKEN"),
                 "Content-Type": "application/json"
             }
 
-            faglig_vurdering_step_id = row.get(f"step{faglig_vurdering}id")
+            faglig_vurdering_step_id = row.get("vurdering_step_id")
 
             url = f"{base_url}step-runs/{faglig_vurdering_step_id}"
 
@@ -156,5 +156,7 @@ def _fetch_reevaluation(process: str):
             response = requests.patch(url=url, json=json_data, headers=headers, timeout=10)
 
             if response.status_code != 200:
-                print("ERROR")
-                logging.info("ERROR")
+                logging.info(
+                    f"Failed to update step-run {faglig_vurdering_step_id} for entity {row.get('entity_id')}: "
+                    f"status={response.status_code}, body={response.text}"
+                )
