@@ -31,8 +31,8 @@ def _fetch_reevaluation(process: str):
     connection_string = os.environ.get("DBCONNECTIONSTRINGPROCESSDASHBOARDPROD")
 
     if process == "fritvalg":
-        faglig_vurdering = "33"
-        journal_sendt = "35"
+        faglig_vurdering = "19"
+        journal_sendt = "22"
 
         base_url = "https://dev-mbu-dashboard-api.adm.aarhuskommune.dk/api/v1"
 
