@@ -34,7 +34,7 @@ def _fetch_reevaluation(process: str):
         faglig_vurdering = "19"
         journal_sendt = "22"
 
-        base_url = "https://dev-mbu-dashboard-api.adm.aarhuskommune.dk/api/v1"
+        base_url = "https://mbu-dashboard-api.adm.aarhuskommune.dk/api/v1"
 
     else:
         faglig_vurdering = "3"
