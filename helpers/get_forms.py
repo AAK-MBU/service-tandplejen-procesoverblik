@@ -49,7 +49,7 @@ def main():
             JSON_VALUE([view_Journalizing].form_data, '$.data.borger_navn') AS borger_navn,
             JSON_VALUE([view_Journalizing].form_data, '$.data.barnets_navn') AS barnets_navn,
             JSON_VALUE([view_Journalizing].form_data, '$.data.cpr_nummer_barnet') AS cpr_nummer_barnet,
-            COALESCE(JSON_VALUE([view_Journalizing].form_data, '$.data.journal_samtykke_borger_valg'), JSON_VALUE([view_Journalizing].form_data, '$.data.journal_samtykke_svarer_paa_vegne_af_barn_valg')) AS journal_samtykke_valg
+            COALESCE(NULLIF(TRIM(JSON_VALUE([view_Journalizing].form_data, '$.data.journal_samtykke_borger_valg')), ''), NULLIF(TRIM(JSON_VALUE([view_Journalizing].form_data, '$.data.journal_samtykke_svarer_paa_vegne_af_barn_valg')), '')) AS journal_samtykke_valg
 
         FROM [RPA].[journalizing].[view_Journalizing]
         WHERE
