@@ -150,7 +150,7 @@ def main():
 
                 api_admin_token = os.getenv("API_ADMIN_TOKEN")
 
-                client = ProcessDashboardClient(api_admin_token=api_admin_token, base_url="https://dev-mbu-dashboard-api.adm.aarhuskommune.dk/api/v1")
+                client = ProcessDashboardClient(api_admin_token=api_admin_token)
 
                 tilflytter_process_name = "Tilflytter til Aarhus Kommune"
 
