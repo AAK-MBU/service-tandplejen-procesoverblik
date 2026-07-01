@@ -30,6 +30,7 @@ def main():
             JSON_VALUE([view_Journalizing].form_data, '$.data.tandlaege_navn_manuelt') AS tandlaege_navn_manuelt,
             JSON_VALUE([view_Journalizing].form_data, '$.data.tandlaege_adresse__dawa') AS tandlaege_adresse_manuelt,
             JSON_VALUE([view_Journalizing].form_data, '$.data.tandlaege_ydernummer_manuelt') AS tandlaege_ydernummer_manuelt,
+            JSON_VALUE([view_Journalizing].form_data, '$.data.tandlaege_telefonnummer_manuelt') AS tandlaege_telefonnummer_manuelt,
             (SELECT TOP 1 JSON_VALUE(a.value, '$.url') FROM OPENJSON(JSON_QUERY([view_Journalizing].form_data, '$.data.attachments')) a) AS url,
 
             JSON_VALUE([view_Journalizing].form_data, '$.data.tandlaege_telefonnummer_manuelt') AS tandlaege_telefonnummer_manuelt,
