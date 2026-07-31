@@ -10,6 +10,7 @@ from helpers import (
     get_forms,
     add_to_final_queue,
     reevaluate_faglig_vurdering,
+    tilflytter_afventer_udsendelse,
 )
 
 os.environ["REQUESTS_CA_BUNDLE"] = PATH_TO_REQUESTS_CA_BUNDLE
@@ -68,6 +69,11 @@ def main_loop():
             logging.info("Step 4 - Processing final queue...")
             add_to_final_queue.main()
             logging.info("Step 4 DONE.")
+
+            # Step 5 - Resuming paused tilflytter items whose welcome letter is ready...
+            logging.info("Step 5 - Checking paused tilflytter items for welcome letter readiness...")
+            tilflytter_afventer_udsendelse.main()
+            logging.info("Step 5 DONE.")
 
             # Sleep 5 minutes
             logging.info("Sleeping for 5 minutes...")

@@ -129,8 +129,6 @@ def main():
             patient_data_dict["journal_samtykke"] = journal_samtykke_valg
 
             if form_type == "tilflytter_til_aarhus_kommune_sa":
-                dev = True
-
                 workqueue_name = "jou.solteqtand.tilflytter"
 
                 borger_telefonnummer = sub.get("borger_telefonnummer")
