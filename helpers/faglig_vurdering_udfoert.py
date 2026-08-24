@@ -60,7 +60,11 @@ def main():
 
                 else:
                     if process == "fritvalg":
-                        change_status = True
+                        # Only re-activate items parked *because faglig vurdering wasn't done
+                        # yet*. Items parked for other business reasons (no appointments, not
+                        # registered for digital post, ...) are not resolved by the event
+                        # existing, so leave them for a human instead of looping forever.
+                        change_status = item.message == "Faglig vurdering endnu ikke udført"
 
                     else:
                         if int(results[0].get("Status")) in (632, 634):
