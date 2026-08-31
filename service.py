@@ -50,30 +50,30 @@ def main_loop():
 
     while running:
         try:
-            # Step 1 - Checking 'faglig_vurdering_udfoert' workqueue...
-            logging.info("Step 1 - Checking 'faglig_vurdering_udfoert' workqueue...")
-            faglig_vurdering_udfoert.main()
-            logging.info("Step 1 DONE.")
+            # # Step 1 - Checking 'faglig_vurdering_udfoert' workqueue...
+            # logging.info("Step 1 - Checking 'faglig_vurdering_udfoert' workqueue...")
+            # faglig_vurdering_udfoert.main()
+            # logging.info("Step 1 DONE.")
 
             # Step 2 - Checking formular submissions...
             logging.info("Step 2 - Checking formular submissions...")
             get_forms.main()
             logging.info("Step 2 DONE.")
 
-            # Step 3 - Checking for incomplete incidents of faglig vurdering...
-            logging.info("Step 3 - Checking for incomplete incidents of faglig vurdering...")
-            reevaluate_faglig_vurdering.main()
-            logging.info("Step 3 DONE.")
+            # # Step 3 - Checking for incomplete incidents of faglig vurdering...
+            # logging.info("Step 3 - Checking for incomplete incidents of faglig vurdering...")
+            # reevaluate_faglig_vurdering.main()
+            # logging.info("Step 3 DONE.")
 
-            # Step 4 - Processing final queue...
-            logging.info("Step 4 - Processing final queue...")
-            add_to_final_queue.main()
-            logging.info("Step 4 DONE.")
+            # # Step 4 - Processing final queue...
+            # logging.info("Step 4 - Processing final queue...")
+            # add_to_final_queue.main()
+            # logging.info("Step 4 DONE.")
 
-            # Step 5 - Resuming paused tilflytter items whose welcome letter is ready...
-            logging.info("Step 5 - Checking paused tilflytter items for welcome letter readiness...")
-            tilflytter_afventer_udsendelse.main()
-            logging.info("Step 5 DONE.")
+            # # Step 5 - Resuming paused tilflytter items whose welcome letter is ready...
+            # logging.info("Step 5 - Checking paused tilflytter items for welcome letter readiness...")
+            # tilflytter_afventer_udsendelse.main()
+            # logging.info("Step 5 DONE.")
 
             # Sleep 5 minutes
             logging.info("Sleeping for 5 minutes...")

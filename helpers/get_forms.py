@@ -162,7 +162,7 @@ def main():
                 process_id, tilflytter_process_steps = process.find_process_id_and_steps(client=client, process_name=tilflytter_process_name)
 
                 borger_valgt_privat_step_id = next(
-                    (step.get("name") for step in tilflytter_process_steps if step.get("name") == "Borger har valgt privat tandklinik"),
+                    (step.get("id") for step in tilflytter_process_steps if step.get("name") == "Borger har valgt privat tandklinik"),
                     None
                 )
 
@@ -179,7 +179,11 @@ def main():
                     process_run_steps = process_run.get("steps")
 
                     step_run_id = next(
-                        (step.get("step_id") for step in process_run_steps if step.get("step_id") == borger_valgt_privat_step_id),
+                        (
+                            step.get("id")
+                            for step in process_run_steps
+                            if step.get("step_id") == borger_valgt_privat_step_id
+                        ),
                         None
                     )
 
