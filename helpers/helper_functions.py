@@ -49,6 +49,63 @@ def handle_process_dashboard(client: ProcessDashboardClient, status: str, step_r
     return updated_step_run_data, status_code
 
 
+def update_process_run_steps(client: ProcessDashboardClient, process_steps: list[dict], process_run: dict, step_statuses: dict[str, str]):
+    """
+    Update one or more step runs on a single process run.
+
+    Resolves each step name to its step id (from the process definition), finds the
+    matching step run on the given process run, and updates it with the wanted status.
+
+    Args:
+        client (ProcessDashboardClient): Client used to talk to the process dashboard.
+        process_steps (list[dict]): Step definitions for the process, as returned by process.find_process_id_and_steps().
+        process_run (dict): The process run to update - must contain a "steps" list.
+        step_statuses (dict[str, str]): Mapping of step name -> wanted status, e.g.
+            {"Borger har valgt privat tandklinik": "success", "Formular indsendt": "cancelled"}.
+            Steps are updated in the order they appear in the mapping.
+
+    Returns:
+        dict[str, tuple]: Mapping of step name -> (updated_step_run_data, status_code) for the steps that were updated.
+    """
+
+    process_run_steps = process_run.get("steps") or []
+
+    step_id_map = {
+        step.get("name"): step.get("id")
+        for step in process_steps
+    }
+
+    results = {}
+
+    for step_name, status in step_statuses.items():
+        step_id = step_id_map.get(step_name)
+
+        if step_id is None:
+            logger.warning(f"Step '{step_name}' not found in the process definition - skipping.")
+
+            continue
+
+        step_run_id = next(
+            (
+                step.get("id")
+                for step in process_run_steps
+                if step.get("step_id") == step_id
+            ),
+            None
+        )
+
+        if step_run_id is None:
+            logger.warning(f"No step run found for step '{step_name}' on process run {process_run.get('id')} - skipping.")
+
+            continue
+
+        logger.info(f"Setting step '{step_name}' (step run {step_run_id}) to '{status}'.")
+
+        results[step_name] = handle_process_dashboard(client=client, status=status, step_run_id=step_run_id, failure=None)
+
+    return results
+
+
 def get_items_from_query_with_params(connection_string, query, params):
     """
     Execute a parameterized SQL query and return results as dictionaries.

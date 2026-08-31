@@ -11,6 +11,14 @@ from mbu_process_dashboard_shared_components import process
 from helpers import helper_functions
 
 
+# Steps to update on an active tilflytter process run when the citizen instead chooses fritvalg
+TILFLYTTER_FRITVALG_STEP_STATUSES = {
+    "Borger har valgt privat tandklinik": "success",
+    "Formular indsendt": "cancelled",
+    "Formular journaliseret": "cancelled",
+}
+
+
 def main():
     """
     Fetch forms for 4 tandpleje formulars
@@ -166,11 +174,6 @@ def main():
 
                 process_id, tilflytter_process_steps = process.find_process_id_and_steps(client=client, process_name=tilflytter_process_name)
 
-                borger_valgt_privat_step_id = next(
-                    (step.get("id") for step in tilflytter_process_steps if step.get("name") == "Borger har valgt privat tandklinik"),
-                    None
-                )
-
                 response = client.get(endpoint=f"/runs/?process_id={process_id}&meta_filter=cpr%3A{patient_cpr}&order_by=created_at&sort_direction=desc&page=1&size=50")
 
                 data = response.json()
@@ -179,20 +182,12 @@ def main():
                 if results:
                     logging.info("Patient has an active tilflytter process run - proceeding to cancel this run")
 
-                    process_run = results[0]
-
-                    process_run_steps = process_run.get("steps")
-
-                    step_run_id = next(
-                        (
-                            step.get("id")
-                            for step in process_run_steps
-                            if step.get("step_id") == borger_valgt_privat_step_id
-                        ),
-                        None
+                    helper_functions.update_process_run_steps(
+                        client=client,
+                        process_steps=tilflytter_process_steps,
+                        process_run=results[0],
+                        step_statuses=TILFLYTTER_FRITVALG_STEP_STATUSES,
                     )
-
-                    helper_functions.handle_process_dashboard(client=client, status="cancelled", step_run_id=step_run_id, failure=None)
 
                 patient_data_dict["cpr"] = patient_cpr
                 patient_data_dict["name"] = patient_name
