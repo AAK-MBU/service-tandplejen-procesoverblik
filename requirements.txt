@@ -1,5 +1,5 @@
 automation-server-client @ git+https://github.com/odense-rpa/automation-server-client.git@v0.2.0
-mbu_solteqtand_shared_components>=1.1.0
+mbu_solteqtand_shared_components>=3.1.4
 mbu_msoffice_integration>=1.0.1
 mbu-rpa-core
 mbu-process-dashboard-shared-components
