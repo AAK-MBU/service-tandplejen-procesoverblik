@@ -180,8 +180,6 @@ def main():
                 results = data.get("items", [])
 
                 if results:
-                    logging.info("Patient has an active tilflytter process run - proceeding to cancel this run")
-
                     helper_functions.update_process_run_steps(
                         client=client,
                         process_steps=tilflytter_process_steps,

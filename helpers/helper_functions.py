@@ -42,8 +42,6 @@ def handle_process_dashboard(client: ProcessDashboardClient, status: str, step_r
     else:
         step_run_update_data = process_step_run.build_step_run_update(status=status)
 
-    logger.info("before update_dashboard_step_run_by_id() ...")
-
     updated_step_run_data, status_code = process_step_run.update_dashboard_step_run_by_id(client=client, step_run_id=step_run_id, update_data=step_run_update_data)
 
     return updated_step_run_data, status_code
@@ -99,9 +97,12 @@ def update_process_run_steps(client: ProcessDashboardClient, process_steps: list
 
             continue
 
-        logger.info(f"Setting step '{step_name}' (step run {step_run_id}) to '{status}'.")
-
         results[step_name] = handle_process_dashboard(client=client, status=status, step_run_id=step_run_id, failure=None)
+
+    if results:
+        updated = ", ".join(f"{step_name} -> {step_statuses[step_name]}" for step_name in results)
+
+        logger.info(f"Updated step runs on process run {process_run.get('id')}: {updated}")
 
     return results
 
