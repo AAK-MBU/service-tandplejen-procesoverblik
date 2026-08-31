@@ -132,10 +132,15 @@ def main():
                 workqueue_name = "jou.solteqtand.tilflytter"
 
                 behandling_samtykke = sub.get("behandling_samtykke")
-                if behandling_samtykke is None:
-                    behandling_samtykke_svarer_paa_vegne_af_barn_valg = None
+
+                if behandling_samtykke == "ja":
+                    behandling_samtykke_svarer_paa_vegne_af_barn_valg = True
+
+                elif behandling_samtykke == "nej":
+                    behandling_samtykke_svarer_paa_vegne_af_barn_valg = False
+
                 else:
-                    behandling_samtykke_svarer_paa_vegne_af_barn_valg = behandling_samtykke == "ja"
+                    behandling_samtykke_svarer_paa_vegne_af_barn_valg = None
 
                 borger_telefonnummer = sub.get("borger_telefonnummer")
                 cpr_nummer_anden_foraeldremyndighed = sub.get("cpr_nummer_anden_foraeldremyndighed")
