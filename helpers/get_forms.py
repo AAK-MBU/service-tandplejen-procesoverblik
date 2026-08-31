@@ -131,8 +131,13 @@ def main():
             if form_type == "tilflytter_til_aarhus_kommune_sa":
                 workqueue_name = "jou.solteqtand.tilflytter"
 
+                behandling_samtykke = sub.get("behandling_samtykke")
+                if behandling_samtykke is None:
+                    behandling_samtykke_svarer_paa_vegne_af_barn_valg = None
+                else:
+                    behandling_samtykke_svarer_paa_vegne_af_barn_valg = behandling_samtykke == "ja"
+
                 borger_telefonnummer = sub.get("borger_telefonnummer")
-                behandling_samtykke_svarer_paa_vegne_af_barn_valg = sub.get("behandling_samtykke_svarer_paa_vegne_af_barn_valg") == "ja"
                 cpr_nummer_anden_foraeldremyndighed = sub.get("cpr_nummer_anden_foraeldremyndighed")
                 anden_foraeldermyndighed_telefonnummer_manuelt = sub.get("anden_foraeldermyndighed_telefonnummer_manuelt")
                 kommunevaelger = sub.get("kommunevaelger")
