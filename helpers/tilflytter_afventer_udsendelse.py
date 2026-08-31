@@ -2,7 +2,9 @@
 
 An item pauses (pending user action) in the tilflytter-registreret queue when the RPA is
 waiting for either:
-  - an under-18 welcome letter to be approved ("Godkend afsendelse af velkomstbrev"), or
+  - an under-18 welcome letter to be approved - Tandplejen approves by setting the
+    "Velkomstbrev" booking reminder's aftalestatus to 638 ("Tilflytter - Afsendelse
+    godkendt"), or
   - a manual send by Tandplejen ("Tilflytter - Ikke tilmeldt digital post - udsend brev
     manuelt") plus a journalised "Velkomstbrev" document.
 
@@ -30,9 +32,14 @@ SOLTEQ_TAND_DB_CONN_STRING = os.getenv("DBCONNECTIONSTRINGSOLTEQTAND")
 # The queue the RPA processes with --tilflytter_registreret; paused items land here.
 WORKQUEUE_NAME = "tan.tilflytter.tilflytter_registreret"
 
-APPROVAL_EVENT = "Godkend afsendelse af velkomstbrev"
 MANUAL_SEND_EVENT = "Tilflytter - Ikke tilmeldt digital post - udsend brev manuelt"
 WELCOME_DOCUMENT_NAME = "Velkomstbrev"
+
+# The booking reminder carrying the approval state. Solteq stores the aftalestatus as a
+# numeric id in the database (636 "Tilflytter - Afventer godkendelse", 638 "Tilflytter -
+# Afsendelse godkendt", 640 "Tilflytter - Velkomstbrev udsendt"), so DB filters use the id.
+WELCOME_BOOKING_TEXT = "Velkomstbrev"
+APPROVED_BOOKING_STATUS_ID = 638
 
 
 def main():
@@ -72,7 +79,8 @@ def _is_ready_to_resume(db_handler: SolteqTandDatabase, cpr: str) -> bool:
     branch, so its presence tells us which pause the item is currently in:
       - manual-send event exists -> manual-send phase: ready when it has been handled
         AND the welcome document exists.
-      - otherwise -> approval phase: ready when the approval event has been handled.
+      - otherwise -> approval phase: ready when the "Velkomstbrev" booking reminder has
+        been set to the approved aftalestatus (638).
 
     (A plain "approval OR manual-send" check would keep firing on the already-given
     approval after an under-18 + not-registered citizen moves on to the manual-send pause.)
@@ -88,6 +96,27 @@ def _is_ready_to_resume(db_handler: SolteqTandDatabase, cpr: str) -> bool:
 
         return handled and document_exists
 
-    approval_events = db_handler.get_list_of_events(filters={"e.currentStateText": [APPROVAL_EVENT], "p.cpr": cpr})
+    return _welcome_booking_is_approved(db_handler=db_handler, cpr=cpr)
 
-    return any(event["archived"] for event in approval_events)
+
+def _welcome_booking_is_approved(db_handler: SolteqTandDatabase, cpr: str) -> bool:
+    """
+    True if the citizen has a "Velkomstbrev" booking reminder with aftalestatus 638
+    ("Tilflytter - Afsendelse godkendt"), i.e. Tandplejen has approved the send.
+
+    Only future bookings count: the reminder is created 3 months out, so limiting the
+    lookup to future bookings keeps an abandoned reminder from an earlier tilflytter run
+    from being read as an approval of the current one. b.Status is not in the SELECT of
+    get_list_of_bookings, but it can still be filtered on - a match is the approval.
+    """
+
+    approved_bookings = db_handler.get_list_of_bookings(
+        filters={
+            "p.cpr": cpr,
+            "b.BookingText": WELCOME_BOOKING_TEXT,
+            "b.Status": APPROVED_BOOKING_STATUS_ID,
+            "b.StartTime": (">=", datetime.now()),
+        }
+    )
+
+    return bool(approved_bookings)
