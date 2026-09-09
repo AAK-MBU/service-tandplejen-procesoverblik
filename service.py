@@ -11,6 +11,7 @@ from helpers import (
     add_to_final_queue,
     reevaluate_faglig_vurdering,
     tilflytter_afventer_udsendelse,
+    tilflytter_velkomstbrev_annulleret,
 )
 
 os.environ["REQUESTS_CA_BUNDLE"] = PATH_TO_REQUESTS_CA_BUNDLE
@@ -74,6 +75,11 @@ def main_loop():
             logging.info("Step 5 - Checking paused tilflytter items for welcome letter readiness...")
             tilflytter_afventer_udsendelse.main()
             logging.info("Step 5 DONE.")
+
+            # Step 6 - Cancelling tilflytter process runs whose welcome letter was called off...
+            logging.info("Step 6 - Checking running tilflytter process runs for called-off welcome letters...")
+            tilflytter_velkomstbrev_annulleret.main()
+            logging.info("Step 6 DONE.")
 
             # Sleep 5 minutes
             logging.info("Sleeping for 5 minutes...")
