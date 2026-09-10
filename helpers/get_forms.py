@@ -27,6 +27,16 @@ TILFLYTTER_OWN_FORM_STEP_STATUSES = {
     "Borger har valgt privat tandklinik": "optional",
 }
 
+# The three workqueues this step feeds. A submission's status in the database is no
+# longer updated once it has been handled, so what tells us whether a submission has
+# already been queued is the target workqueue's own references - fetched once per pass
+# into a set per queue, rather than re-read for every submission.
+WORKQUEUE_UDSKRIVNING_22 = "jou.solteqtand.udskrivning_22"
+WORKQUEUE_TILFLYTTER = "jou.solteqtand.tilflytter"
+WORKQUEUE_FRITVALG = "tan.fritvalg.fritvalg_registreret"
+
+TARGET_WORKQUEUE_NAMES = (WORKQUEUE_UDSKRIVNING_22, WORKQUEUE_TILFLYTTER, WORKQUEUE_FRITVALG)
+
 
 def main():
     """
@@ -83,9 +93,20 @@ def main():
 
     items = helper_functions.get_items_from_query_with_params(connection_string=connection_string, query=sql, params=[])
 
-    for sub in items:
-        dev = False
+    dev = False
 
+    workqueues = {}
+    existing_refs = {}
+
+    for target_workqueue_name in TARGET_WORKQUEUE_NAMES:
+        workqueue = helper_functions.fetch_workqueue(workqueue_name=target_workqueue_name, dev=dev)
+
+        workqueues[target_workqueue_name] = workqueue
+        existing_refs[target_workqueue_name] = {str(r) for r in helper_functions.get_workqueue_item_references(workqueue, dev=dev)}
+
+        logging.info(f"Fetched {len(existing_refs[target_workqueue_name])} existing references from '{target_workqueue_name}'.")
+
+    for sub in items:
         form_data = sub.get("form_data")
         if "purged" in form_data:
             continue
@@ -185,9 +206,9 @@ def main():
         if patient_data_dict["cpr"] == "":
             patient_data_dict["cpr"] = patient_cpr
 
-        workqueue = helper_functions.fetch_workqueue(workqueue_name=workqueue_name, dev=dev)
+        workqueue = workqueues[workqueue_name]
 
-        existing_refs = {str(r) for r in helper_functions.get_workqueue_item_references(workqueue, dev=dev)}
+        queue_refs = existing_refs[workqueue_name]
 
         if form_type == "fritvalgsordning_samlet_formular":
             ref = patient_cpr
@@ -195,11 +216,18 @@ def main():
         else:
             ref = form_id
 
-        if ref in existing_refs:
+        # The queue's references come back as strings, so compare like for like.
+        ref = str(ref)
+
+        if ref in queue_refs:
             logging.info(f"Reference {ref} already exists → skipping.")
 
         else:
             workqueue.add_item(data={"item": {"reference": ref, "data": patient_data_dict}}, reference=ref)
+
+            # Keep the set current so a second submission with the same reference later
+            # in this same pass is skipped rather than queued twice.
+            queue_refs.add(ref)
 
             logging.info(f"Created new workitem for form_id {ref}.")
 
