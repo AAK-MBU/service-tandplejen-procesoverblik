@@ -11,11 +11,20 @@ from mbu_process_dashboard_shared_components import process
 from helpers import helper_functions
 
 
+TILFLYTTER_PROCESS_NAME = "Tilflytter til Aarhus Kommune"
+
 # Steps to update on an active tilflytter process run when the citizen instead chooses fritvalg
 TILFLYTTER_FRITVALG_STEP_STATUSES = {
     "Borger har valgt privat tandklinik": "success",
     "Formular indsendt": "cancelled",
     "Formular journaliseret": "cancelled",
+}
+
+# The mirror case: a tilflytter formular means the citizen stayed with the municipal
+# clinic, so the private-clinic step will never happen on that run. "optional" marks it
+# as not applicable rather than done or cancelled, so it does not hold the run open.
+TILFLYTTER_OWN_FORM_STEP_STATUSES = {
+    "Borger har valgt privat tandklinik": "optional",
 }
 
 
@@ -163,29 +172,12 @@ def main():
                 patient_data_dict["kommunevaelger"] = kommunevaelger
                 patient_data_dict["kommunal_tandklinik_navn_manuelt"] = kommunal_tandklinik_navn_manuelt
 
+                _update_latest_tilflytter_run(patient_cpr=patient_cpr, step_statuses=TILFLYTTER_OWN_FORM_STEP_STATUSES)
+
             elif form_type == "fritvalgsordning_samlet_formular":
                 workqueue_name = "tan.fritvalg.fritvalg_registreret"
 
-                api_admin_token = os.getenv("API_ADMIN_TOKEN")
-
-                client = ProcessDashboardClient(api_admin_token=api_admin_token)
-
-                tilflytter_process_name = "Tilflytter til Aarhus Kommune"
-
-                process_id, tilflytter_process_steps = process.find_process_id_and_steps(client=client, process_name=tilflytter_process_name)
-
-                response = client.get(endpoint=f"/runs/?process_id={process_id}&meta_filter=cpr%3A{patient_cpr}&order_by=created_at&sort_direction=desc&page=1&size=50")
-
-                data = response.json()
-                results = data.get("items", [])
-
-                if results:
-                    helper_functions.update_process_run_steps(
-                        client=client,
-                        process_steps=tilflytter_process_steps,
-                        process_run=results[0],
-                        step_statuses=TILFLYTTER_FRITVALG_STEP_STATUSES,
-                    )
+                _update_latest_tilflytter_run(patient_cpr=patient_cpr, step_statuses=TILFLYTTER_FRITVALG_STEP_STATUSES)
 
                 patient_data_dict["cpr"] = patient_cpr
                 patient_data_dict["name"] = patient_name
@@ -210,3 +202,36 @@ def main():
             workqueue.add_item(data={"item": {"reference": ref, "data": patient_data_dict}}, reference=ref)
 
             logging.info(f"Created new workitem for form_id {ref}.")
+
+
+def _update_latest_tilflytter_run(patient_cpr: str, step_statuses: dict[str, str]):
+    """
+    Apply step statuses to the citizen's most recent tilflytter process run.
+
+    Both directions of the tilflytter/fritvalg split need this: a fritvalg formular
+    cancels the tilflytter run's form steps, and a tilflytter formular marks the
+    private-clinic step optional. No-op when the citizen has no tilflytter run.
+    """
+
+    api_admin_token = os.getenv("API_ADMIN_TOKEN")
+
+    client = ProcessDashboardClient(api_admin_token=api_admin_token)
+
+    process_id, tilflytter_process_steps = process.find_process_id_and_steps(client=client, process_name=TILFLYTTER_PROCESS_NAME)
+
+    response = client.get(endpoint=f"/runs/?process_id={process_id}&meta_filter=cpr%3A{patient_cpr}&order_by=created_at&sort_direction=desc&page=1&size=50")
+
+    data = response.json()
+    results = data.get("items", [])
+
+    if not results:
+        logging.info(f"No tilflytter process run found for CPR {patient_cpr} - skipping step update.")
+
+        return
+
+    helper_functions.update_process_run_steps(
+        client=client,
+        process_steps=tilflytter_process_steps,
+        process_run=results[0],
+        step_statuses=step_statuses,
+    )
