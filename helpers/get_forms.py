@@ -37,6 +37,15 @@ WORKQUEUE_FRITVALG = "tan.fritvalg.fritvalg_registreret"
 
 TARGET_WORKQUEUE_NAMES = (WORKQUEUE_UDSKRIVNING_22, WORKQUEUE_TILFLYTTER, WORKQUEUE_FRITVALG)
 
+FORM_TYPE_WORKQUEUES = {
+    "udskrivning_22_aar_privat_tandkl": WORKQUEUE_UDSKRIVNING_22,
+    "udskrivning_22_aar_tandpleje_for": WORKQUEUE_UDSKRIVNING_22,
+    "tilflytter_til_aarhus_kommune_sa": WORKQUEUE_TILFLYTTER,
+    "fritvalgsordning_samlet_formular": WORKQUEUE_FRITVALG,
+}
+
+FRITVALG_FORM_TYPE = "fritvalgsordning_samlet_formular"
+
 
 def main():
     """
@@ -111,13 +120,24 @@ def main():
         if "purged" in form_data:
             continue
 
-        workqueue_name = ""
-
         form_id = sub.get("form_id")
 
         form_type = sub.get("form_type")
 
         udfylder_cpr = sub.get("citizen_cpr")
+
+        workqueue_name, ref = _resolve_queue_and_reference(sub)
+
+        if workqueue_name is None:
+            logging.warning(f"Unknown form_type '{form_type}' for form_id {form_id} - skipping.")
+
+            continue
+
+        # Dedupe before anything else: a submission that was already queued on an earlier
+        # pass had its process run handled back then too, so re-running the tilflytter
+        # step updates for it would just re-patch the same run on every pass.
+        if ref in existing_refs[workqueue_name]:
+            continue
 
         if sub.get("vaelg_tandlaege_api"):
             parts = [p.strip() for p in sub["vaelg_tandlaege_api"].split("||")]
@@ -142,8 +162,6 @@ def main():
         }
 
         if form_type in ("udskrivning_22_aar_privat_tandkl", "udskrivning_22_aar_tandpleje_for"):
-            workqueue_name = "jou.solteqtand.udskrivning_22"
-
             patient_cpr = udfylder_cpr
             samtykke_valg = sub.get("samtykke_valg") == "ja"
 
@@ -167,8 +185,6 @@ def main():
             patient_data_dict["journal_samtykke"] = journal_samtykke_valg
 
             if form_type == "tilflytter_til_aarhus_kommune_sa":
-                workqueue_name = "jou.solteqtand.tilflytter"
-
                 behandling_samtykke = sub.get("behandling_samtykke")
 
                 if behandling_samtykke == "ja":
@@ -195,9 +211,7 @@ def main():
 
                 _update_latest_tilflytter_run(patient_cpr=patient_cpr, step_statuses=TILFLYTTER_OWN_FORM_STEP_STATUSES)
 
-            elif form_type == "fritvalgsordning_samlet_formular":
-                workqueue_name = "tan.fritvalg.fritvalg_registreret"
-
+            elif form_type == FRITVALG_FORM_TYPE:
                 _update_latest_tilflytter_run(patient_cpr=patient_cpr, step_statuses=TILFLYTTER_FRITVALG_STEP_STATUSES)
 
                 patient_data_dict["cpr"] = patient_cpr
@@ -206,30 +220,13 @@ def main():
         if patient_data_dict["cpr"] == "":
             patient_data_dict["cpr"] = patient_cpr
 
-        workqueue = workqueues[workqueue_name]
+        workqueues[workqueue_name].add_item(data={"item": {"reference": ref, "data": patient_data_dict}}, reference=ref)
 
-        queue_refs = existing_refs[workqueue_name]
+        # Keep the set current so a second submission with the same reference later in
+        # this same pass is skipped by the check at the top rather than queued twice.
+        existing_refs[workqueue_name].add(ref)
 
-        if form_type == "fritvalgsordning_samlet_formular":
-            ref = patient_cpr
-
-        else:
-            ref = form_id
-
-        # The queue's references come back as strings, so compare like for like.
-        ref = str(ref)
-
-        if ref in queue_refs:
-            logging.info(f"Reference {ref} already exists → skipping.")
-
-        else:
-            workqueue.add_item(data={"item": {"reference": ref, "data": patient_data_dict}}, reference=ref)
-
-            # Keep the set current so a second submission with the same reference later
-            # in this same pass is skipped rather than queued twice.
-            queue_refs.add(ref)
-
-            logging.info(f"Created new workitem for form_id {ref}.")
+        logging.info(f"Created new workitem for form_id {ref}.")
 
 
 def _update_latest_tilflytter_run(patient_cpr: str, step_statuses: dict[str, str]):
@@ -263,3 +260,30 @@ def _update_latest_tilflytter_run(patient_cpr: str, step_statuses: dict[str, str
         process_run=results[0],
         step_statuses=step_statuses,
     )
+
+
+def _resolve_queue_and_reference(sub: dict):
+    """
+    The workqueue a submission belongs in, and the reference used to dedupe it.
+
+    Resolved straight from the submission so the caller can tell whether it has already
+    been handled before touching any process run. Returns (None, None) for a form type
+    this step does not route.
+    """
+
+    form_type = sub.get("form_type")
+
+    workqueue_name = FORM_TYPE_WORKQUEUES.get(form_type)
+
+    if workqueue_name is None:
+        return None, None
+
+    if form_type == FRITVALG_FORM_TYPE:
+        # Fritvalg items are keyed on the patient rather than the submission.
+        ref = sub.get("cpr_nummer_barnet") or sub.get("citizen_cpr")
+
+    else:
+        ref = sub.get("form_id")
+
+    # The queue's references come back as strings, so compare like for like.
+    return workqueue_name, str(ref)
