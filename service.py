@@ -12,7 +12,6 @@ from helpers import (
     reevaluate_faglig_vurdering,
     tilflytter_afventer_udsendelse,
     tilflytter_velkomstbrev_annulleret,
-    temp_backfill_tilflytter_optional,
 )
 
 os.environ["REQUESTS_CA_BUNDLE"] = PATH_TO_REQUESTS_CA_BUNDLE
@@ -81,13 +80,6 @@ def main_loop():
             logging.info("Step 6 - Checking running tilflytter process runs for called-off welcome letters...")
             tilflytter_velkomstbrev_annulleret.main()
             logging.info("Step 6 DONE.")
-
-            # Step 7 - TEMPORARY: backfilling the private-clinic step on older tilflytter runs.
-            # Delete this block and helpers/temp_backfill_tilflytter_optional.py once the
-            # backfill reports 0 updated runs.
-            logging.info("Step 7 - TEMPORARY backfill of 'Borger har valgt privat tandklinik'...")
-            temp_backfill_tilflytter_optional.main()
-            logging.info("Step 7 DONE.")
 
             # Sleep 5 minutes
             logging.info("Sleeping for 5 minutes...")
